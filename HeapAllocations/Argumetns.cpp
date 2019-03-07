@@ -15,11 +15,10 @@ void Arguments::parse(int argc, char** argv)
 {
 	if (argc > 1)
 	{
-
 		for (int i = 1; i < argc; i++)
 		{
 			std::string argument(argv[i]);
-			int position = argument.find(':');
+			size_t position = argument.find(':');
 			if (position == -1)
 			{
 				std::cout << "Skipping invalid argument : " << argv[i] << std::endl;
@@ -59,7 +58,7 @@ void Arguments::parse(int argc, char** argv)
 	std::cout << "\t\t Max Iterations: " << MaxIterations << std::endl;
 	std::cout << "\t\t Batch Size: " << BatchSize << std::endl;
 	std::cout << "\t\t Batch Iterations: " << BatchIteration << std::endl;
-	std::cout << "\t\t Use Private Heap: " << UsePrivateHeap << std::endl << std::endl << std::endl;
+	std::cout << "\t\t Use Private Heap: " << (UsePrivateHeap ? "true" : "false") << std::endl << std::endl << std::endl;
 }
 
 

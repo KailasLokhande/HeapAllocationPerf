@@ -114,7 +114,7 @@ public:
 		auto startTime = std::chrono::high_resolution_clock::now();
 		for (int i = 0; i < mArgs.MaxIterations; i++)
 		{	
-			std::cout << "Iteration " << i << std::endl;
+			std::cout << "Iteration " << (i+1) << std::endl;
 			DWORD NumberOfHeaps;
 			NumberOfHeaps = GetProcessHeaps(0, NULL);
 			std::cout << "Number of heaps : " << NumberOfHeaps << std::endl;
@@ -159,7 +159,6 @@ int main(int argc, char* argv[])
 	args.parse(argc, argv);
 	HeapAllocationRunner runner(args);
 	runner.PerformTest();
-	std::getchar();
 	return 0;
 }
 

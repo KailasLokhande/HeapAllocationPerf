@@ -12,6 +12,7 @@ namespace Reliability
 		virtual void deallocate(LPVOID p, std::size_t numberOfBytes) = 0;
 		virtual ~IAllocationPolicy() = default;
 		IAllocationPolicy() = default;
+		IAllocationPolicy(IAllocationPolicy&&) = default;
 	};
 
 	//template class IAllocationPolicy<PHANDLE>;

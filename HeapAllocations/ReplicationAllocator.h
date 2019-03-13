@@ -1,9 +1,10 @@
 #pragma once
 #include <cstddef>
 #include "IAllocationPolicy.h"
-
+#include <mutex>
 namespace Reliability
 {
+	std::mutex mut;
 	template <class T>
 	class ReplicationAllocator {
 	
@@ -18,7 +19,7 @@ namespace Reliability
 		typedef std::ptrdiff_t difference_type;
 
 		// constructors
-		ReplicationAllocator(IAllocationPolicy& allocationPolicy) : mAllocationPolicy(allocationPolicy) {}
+		ReplicationAllocator(std::shared_ptr<IAllocationPolicy>& allocationPolicy) : mAllocationPolicy(allocationPolicy) {}
 		ReplicationAllocator(const ReplicationAllocator<T>& other) : mAllocationPolicy(other.mAllocationPolicy) {}
 
 		template <class U> struct rebind {
@@ -26,29 +27,7 @@ namespace Reliability
 		};
 
 		template <class U>
-		ReplicationAllocator(const ReplicationAllocator<U>& other) : mAllocationPolicy{  other.mAllocationPolicy }
-		{
-			/*mAllocationPolicy = const_cast< std::unique_ptr<IAllocationPolicy<U>>>(other.mAllocationPolicy);*/
-			//if ()
-			std::cerr << "CHECK WHY" << std::endl;
-		}
-
-		//template <>
-		//ReplicationAllocator(const ReplicationAllocator<std::nullptr_t>& other) noexcept : mAllocationPolicy(nullptr)
-		//{
-		//	/*mAllocationPolicy = const_cast< std::unique_ptr<IAllocationPolicy<U>>>(other.mAllocationPolicy);*/
-		//	//if ()
-		//	std::cerr << "CHECK WHY" << std::endl;
-		//}
-
-		//template <>
-		//ReplicationAllocator(const ReplicationAllocator<std::nullptr_t>& other) noexcept : mAllocationPolicy(nullptr)
-		//{
-		//	/*mAllocationPolicy = const_cast< std::unique_ptr<IAllocationPolicy<U>>>(other.mAllocationPolicy);*/
-		//	//if ()
-		//	std::cerr << "CHECK WHY" << std::endl;
-		//}
-
+		ReplicationAllocator(const ReplicationAllocator<U>& other) : mAllocationPolicy(other.mAllocationPolicy) {}
 
 		// Destructor
 		~ReplicationAllocator() throw() {}
@@ -56,28 +35,29 @@ namespace Reliability
 		// allocates memory for num elements.
 		pointer allocate(size_type num)
 		{
-			std::cerr << "allocate " << num << " element(s)"
-				<< " of size " << sizeof(T) << std::endl;
-			pointer ret = static_cast<pointer>(mAllocationPolicy.allocate(num * sizeof(T)));
-		/*	if (mAllocationPolicy != nullptr)
-			{
-				ret = static_cast<pointer>(mAllocationPolicy->allocate(num * sizeof(T)));
-			}
-			else
-			{
-			    ret = static_cast<pointer>(::operator new(num * sizeof(T)));
+			/*{
+				std::lock_guard<std::mutex> lock(mut);
+				std::cerr << "allocate " << num << " element(s)"
+					<< " of size " << sizeof(T) << std::endl;
 			}*/
-			std::cerr << " allocated at: " << (void*)ret << std::endl;
+			pointer ret = static_cast<pointer>(mAllocationPolicy->allocate(num * sizeof(T)));
+			/*{
+				std::lock_guard<std::mutex> lock(mut);
+				std::cerr << " allocated at: " << (void*)ret << std::endl;
+			}*/
 			return ret;
 		}
 
 		// Deallocates memory for num elements to which p refers.
-		void deallocate(pointer p, size_type num)
+		void deallocate(pointer p, size_type num = 0)
 		{
-			std::cerr << "deallocate " << num << " element(s)"
-				<< " of size " << sizeof(T)
-				<< " at: " << (void*)p << std::endl;
-			mAllocationPolicy.deallocate(p, num);
+			/*{
+				std::lock_guard<std::mutex> lock(mut);
+				std::cerr << "deallocate " << num << " element(s)"
+					<< " of size " << sizeof(T)
+					<< " at: " << (void*)p << std::endl;
+			}*/
+			mAllocationPolicy->deallocate(p, num);
 		}
 
 		template <class U>
@@ -95,7 +75,7 @@ namespace Reliability
 
 		template <class U> friend class ReplicationAllocator;
 	private:
-		IAllocationPolicy& mAllocationPolicy;
+		std::shared_ptr<IAllocationPolicy> mAllocationPolicy;
 	};
 }
 

@@ -195,8 +195,8 @@ public:
 		const HANDLE heapHandle = (!mArgs.UsePrivateHeap) ? hDefaultProcessHeap :
 			HeapCreate(c_defaultDwFlags, c_initialHeapSize, c_maxHeapSize);
 		//MyAlloc<PHANDLE> myAlloc(heapHandle);
-		Reliability::PrivateHeapAllocationPolicy<PHANDLE> pH;
-		Reliability::ReplicationAllocator<PHANDLE> myAlloc(nullptr); //(std::move(std::make_unique<Reliability::PrivateHeapAllocationPolicy<PHANDLE>>()));
+		Reliability::PrivateHeapAllocationPolicy pH;
+		Reliability::ReplicationAllocator<PHANDLE> myAlloc(pH); //(std::move(std::make_unique<Reliability::PrivateHeapAllocationPolicy<PHANDLE>>()));
 		for (int j = 0; j < mArgs.BatchIteration; j++)
 		{
 			const std::thread::id threadId = std::this_thread::get_id();

@@ -18,9 +18,7 @@ namespace Reliability
 		typedef std::ptrdiff_t difference_type;
 
 		// constructors
-		//ReplicationAllocator();
-		//ReplicationAllocator() noexcept : mAllocationPolicy(nullptr) {}
-		ReplicationAllocator(IAllocationPolicy<T>* pAllocationPolicy) : mAllocationPolicy(pAllocationPolicy) {}
+		ReplicationAllocator(IAllocationPolicy& allocationPolicy) : mAllocationPolicy(allocationPolicy) {}
 		ReplicationAllocator(const ReplicationAllocator<T>& other) : mAllocationPolicy(other.mAllocationPolicy) {}
 
 		template <class U> struct rebind {
@@ -28,7 +26,7 @@ namespace Reliability
 		};
 
 		template <class U>
-		ReplicationAllocator(const ReplicationAllocator<U>& other) : mAllocationPolicy{ const_cast< IAllocationPolicy<T>*>( other.mAllocationPolicy )}
+		ReplicationAllocator(const ReplicationAllocator<U>& other) : mAllocationPolicy{  other.mAllocationPolicy }
 		{
 			/*mAllocationPolicy = const_cast< std::unique_ptr<IAllocationPolicy<U>>>(other.mAllocationPolicy);*/
 			//if ()
@@ -60,7 +58,7 @@ namespace Reliability
 		{
 			std::cerr << "allocate " << num << " element(s)"
 				<< " of size " << sizeof(T) << std::endl;
-			pointer ret = mAllocationPolicy->allocate(num * sizeof(T));
+			pointer ret = static_cast<pointer>(mAllocationPolicy.allocate(num * sizeof(T)));
 		/*	if (mAllocationPolicy != nullptr)
 			{
 				ret = static_cast<pointer>(mAllocationPolicy->allocate(num * sizeof(T)));
@@ -79,7 +77,7 @@ namespace Reliability
 			std::cerr << "deallocate " << num << " element(s)"
 				<< " of size " << sizeof(T)
 				<< " at: " << (void*)p << std::endl;
-			::operator delete(p);
+			mAllocationPolicy.deallocate(p, num);
 		}
 
 		template <class U>
@@ -97,7 +95,7 @@ namespace Reliability
 
 		template <class U> friend class ReplicationAllocator;
 	private:
-		IAllocationPolicy<T>* mAllocationPolicy;
+		IAllocationPolicy& mAllocationPolicy;
 	};
 }
 

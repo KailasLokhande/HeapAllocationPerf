@@ -3,14 +3,12 @@
 
 namespace Reliability
 {
-	template<class T>
-	PrivateHeapAllocationPolicy<T>::PrivateHeapAllocationPolicy()
+	PrivateHeapAllocationPolicy::PrivateHeapAllocationPolicy()
 		: mHeapHandle(::HeapCreate(0, 0, 0))
 	{
 	}
 
-	template<class T>
-	PrivateHeapAllocationPolicy<T>::~PrivateHeapAllocationPolicy()
+	PrivateHeapAllocationPolicy::~PrivateHeapAllocationPolicy()
 	{
 		if (mHeapHandle != nullptr)
 		{
@@ -19,19 +17,17 @@ namespace Reliability
 		}
 	}
 
-	template<class T>
-	T* PrivateHeapAllocationPolicy<T>::allocate(std::size_t bytesToAllocate)
+	LPVOID PrivateHeapAllocationPolicy::allocate(std::size_t bytesToAllocate)
 	{
 		if (mHeapHandle == nullptr)
 		{
 			return nullptr;
 		}
 
-		return (T*)(::HeapAlloc(mHeapHandle, 0, bytesToAllocate));
+		return ::HeapAlloc(mHeapHandle, 0, bytesToAllocate);
 	}
 
-	template<class T>
-	void PrivateHeapAllocationPolicy<T>::deallocate(T* p, std::size_t num)
+	void PrivateHeapAllocationPolicy::deallocate(LPVOID p, std::size_t num)
 	{
 		if ((mHeapHandle != nullptr) && (p != nullptr))
 		{
@@ -39,5 +35,4 @@ namespace Reliability
 		}
 	}
 
-	template class PrivateHeapAllocationPolicy<PHANDLE>;
 }

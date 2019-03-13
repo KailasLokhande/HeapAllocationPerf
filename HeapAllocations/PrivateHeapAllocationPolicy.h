@@ -5,14 +5,13 @@
 
 namespace Reliability
 {
-	template<class T>
-	class PrivateHeapAllocationPolicy : public IAllocationPolicy<T>
+	class PrivateHeapAllocationPolicy : public IAllocationPolicy
 	{
 	public:
 		PrivateHeapAllocationPolicy();
 		virtual ~PrivateHeapAllocationPolicy();
-		virtual T* allocate(std::size_t num);
-		virtual void deallocate(T* p, std::size_t num);
+		virtual LPVOID allocate(std::size_t num) override;
+		virtual void deallocate(LPVOID p, std::size_t num) override;
 	
 	private:
 		HANDLE mHeapHandle;

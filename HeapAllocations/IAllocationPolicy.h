@@ -5,16 +5,13 @@
 #include <xutility>
 namespace Reliability
 {
-	template<class T>
 	class IAllocationPolicy
 	{
 	public:
-		virtual T* allocate(std::size_t num) { return static_cast<T*>(::operator new(num * sizeof(T))); };
-		virtual void deallocate(T* p, std::size_t num) { ::operator delete(p); };
+		virtual LPVOID allocate(std::size_t numberOfBytes) = 0;
+		virtual void deallocate(LPVOID p, std::size_t numberOfBytes) = 0;
 		virtual ~IAllocationPolicy() = default;
-		IAllocationPolicy() {};
-		template <class U>
-		inline IAllocationPolicy(const IAllocationPolicy<U>& other) {}
+		IAllocationPolicy() = default;
 	};
 
 	//template class IAllocationPolicy<PHANDLE>;

@@ -14,10 +14,124 @@
 #include <condition_variable>
 #include <string>
 #include "Arguments.h"
+#undef max
+#include <limits>
+#include <map>
+#include "ReplicationAllocator.h"
+#include "PrivateHeapAllocationPolicy.h"
 
 const DWORD     c_defaultDwFlags = 0;
 const size_t    c_initialHeapSize = 1024 * 1024;    // Initial size    
 const size_t    c_maxHeapSize = 0;    // unbound
+//
+//class HeapRegistry
+//{
+//private:
+//	static std::map<std::thread::id, HANDLE> threadHeap;
+//
+//public:
+//	static HANDLE GetOrAddHeap(std::thread::id threadId)
+//	{
+//		if (threadHeap.find(threadId) == threadHeap.end())
+//		{
+//			HANDLE heapHandle = HeapCreate(c_defaultDwFlags, c_initialHeapSize, c_maxHeapSize);
+//			threadHeap[threadId] = heapHandle; 
+//		}
+//		return threadHeap[threadId];
+//	}
+//
+//};
+
+	template <class T>
+	class MyAlloc {
+	public:
+		// type definitions
+		typedef T        value_type;
+		typedef T*       pointer;
+		typedef const T* const_pointer;
+		typedef T&       reference;
+		typedef const T& const_reference;
+		typedef std::size_t    size_type;
+		typedef std::ptrdiff_t difference_type;
+		HANDLE m_heapHandle;
+		// rebind allocator to type U
+		template <class U>
+		struct rebind {
+			typedef MyAlloc<U> other;
+		};
+
+		// return address of values
+		pointer address(reference value) const {
+			return &value;
+		}
+		const_pointer address(const_reference value) const {
+			return &value;
+		}
+
+		/* constructors and destructor
+		 * - nothing to do because the allocator has no state
+		 */
+		MyAlloc(HANDLE heapHandle) throw() {
+			m_heapHandle = heapHandle;
+		}
+		MyAlloc(const MyAlloc& other) throw() {
+			m_heapHandle = other.m_heapHandle;
+		}
+		template <class U>
+		MyAlloc(const MyAlloc<U>& other) throw() {
+			m_heapHandle = other.m_heapHandle;
+		}
+		~MyAlloc() throw() {
+		}
+
+		// return maximum number of elements that can be allocated
+		size_type max_size() const throw() {
+			return std::numeric_limits<std::size_t>::max() / sizeof(T);
+		}
+
+		// allocate but don't initialize num elements of type T
+		pointer allocate(size_type num, const void* = 0) {
+			// print message and allocate memory with global new
+			std::cerr << "allocate " << num << " element(s)"
+				<< " of size " << sizeof(T) << std::endl;
+			pointer ret = (pointer)(HeapAlloc(m_heapHandle, 0, num * sizeof(T)));
+			std::cerr << " allocated at: " << (void*)ret << std::endl;
+			return ret;
+		}
+
+		// initialize elements of allocated storage p with value value
+		void construct(pointer p, const T& value) {
+			// initialize memory with placement new
+			new((void*)p)T(value);
+		}
+
+		// destroy elements of initialized storage p
+		void destroy(pointer p) {
+			// destroy objects by calling their destructor
+			p->~T();
+		}
+
+		// deallocate storage p of deleted elements
+		void deallocate(pointer p, size_type num) {
+			// print message and deallocate memory with global delete
+			std::cerr << "deallocate " << num << " element(s)"
+				<< " of size " << sizeof(T)
+				<< " at: " << (void*)p << std::endl;
+			HeapFree(m_heapHandle, 0, p);
+			//::operator delete((void*)p);
+		}
+	};
+
+	template <class T1, class T2>
+	bool operator== (const MyAlloc<T1>&,
+		const MyAlloc<T2>&) throw() {
+		return true;
+	}
+	template <class T1, class T2>
+	bool operator!= (const MyAlloc<T1>&,
+		const MyAlloc<T2>&) throw() {
+		return false;
+	}
 
 class HeapAllocationRunner
 {
@@ -69,38 +183,48 @@ private:
 	}
 
 public:
+	class Temp
+	{
+		long x;
+		int y;
+		double z;
+	};
 	void DoRun()
 	{
 		SIZE_T bytesToAllocate = 64 * 1024;
-		HANDLE heapHandle = hDefaultProcessHeap;
-		if (mArgs.UsePrivateHeap)
-			heapHandle = HeapCreate(c_defaultDwFlags, c_initialHeapSize, c_maxHeapSize);
+		const HANDLE heapHandle = (!mArgs.UsePrivateHeap) ? hDefaultProcessHeap :
+			HeapCreate(c_defaultDwFlags, c_initialHeapSize, c_maxHeapSize);
+		//MyAlloc<PHANDLE> myAlloc(heapHandle);
+		Reliability::PrivateHeapAllocationPolicy<PHANDLE> pH;
+		Reliability::ReplicationAllocator<PHANDLE> myAlloc(nullptr); //(std::move(std::make_unique<Reliability::PrivateHeapAllocationPolicy<PHANDLE>>()));
 		for (int j = 0; j < mArgs.BatchIteration; j++)
 		{
+			const std::thread::id threadId = std::this_thread::get_id();
 			
-			std::vector<PHANDLE> handles;
+			std::vector<Temp*, Reliability::ReplicationAllocator<PHANDLE>> handles(myAlloc);
 			handles.reserve(mArgs.BatchSize);
 			for (int i = 0; i < mArgs.BatchSize; i++)
 			{
 				auto startTime = std::chrono::high_resolution_clock::now();
-				PHANDLE heap = (PHANDLE)HeapAlloc(heapHandle, 0, bytesToAllocate);
+				void* heap = (void*)HeapAlloc(heapHandle, 0, bytesToAllocate);
+				Temp* temp = new(heap) Temp();
 				auto endTime = std::chrono::high_resolution_clock::now();
 				auto executionTimeInMs = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime);
 				addAllocationTime(executionTimeInMs);
-				if (heap == NULL) {
+				if (temp == NULL) {
 					_tprintf(TEXT("HeapAlloc failed to allocate %d bytes.\n"),
 						bytesToAllocate);
 				}
-				handles.push_back(heap);
+				handles.push_back(temp);
 			}
 			std::this_thread::sleep_for(std::chrono::milliseconds(20));
 			for (int i = 0; i < mArgs.BatchSize; i++)
 			{
 				auto startTime = std::chrono::high_resolution_clock::now();
-				PHANDLE heap = handles[i];
-				if (HeapFree(heapHandle, 0, heap) == FALSE) {
+				Temp* heap = handles[i];
+				/*if (HeapFree(heapHandle, 0, heap) == FALSE) {
 					_tprintf(TEXT("Failed to free allocation from default process heap.\n"));
-				}
+				}*/
 				auto endTime = std::chrono::high_resolution_clock::now();
 				auto executionTimeInMs = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime);
 				addFreeTime(executionTimeInMs);

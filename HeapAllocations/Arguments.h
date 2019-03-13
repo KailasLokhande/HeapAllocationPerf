@@ -2,7 +2,7 @@
 constexpr long MAX_THREADS = 1;
 constexpr long MAX_ITERATIONS = 1;
 constexpr long BATCH_SIZE = 10;
-constexpr long BATCH_ITERATIONS = 100;
+constexpr long BATCH_ITERATIONS = 1;
 constexpr bool USE_PRIVATE_HEAP = true;
 
 struct Arguments

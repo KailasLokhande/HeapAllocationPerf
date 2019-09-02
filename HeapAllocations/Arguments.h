@@ -1,9 +1,9 @@
 #pragma once
-constexpr long MAX_THREADS = 1;
+constexpr long MAX_THREADS = 200;
 constexpr long MAX_ITERATIONS = 1;
 constexpr long BATCH_SIZE = 10;
-constexpr long BATCH_ITERATIONS = 100;
-constexpr bool USE_PRIVATE_HEAP = true;
+constexpr long BATCH_ITERATIONS = 10;
+constexpr bool USE_PRIVATE_HEAP = false;
 
 struct Arguments
 {

@@ -21,6 +21,15 @@
     <ClInclude Include="Arguments.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ReplicationAllocator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="IAllocationPolicy.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PrivateHeapAllocationPolicy.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -30,6 +39,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Argumetns.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PrivateHeapAllocationPolicy.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

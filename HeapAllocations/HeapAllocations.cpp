@@ -14,14 +14,26 @@
 #include <condition_variable>
 #include <string>
 #include "Arguments.h"
+#undef max
+#include <limits>
+#include <map>
+#include "ReplicationAllocator.h"
+#include "PrivateHeapAllocationPolicy.h"
 
 const DWORD     c_defaultDwFlags = 0;
 const size_t    c_initialHeapSize = 1024 * 1024;    // Initial size    
 const size_t    c_maxHeapSize = 0;    // unbound
-
 class HeapAllocationRunner
 {
 private:
+	class Temp
+	{
+		long x;
+		int y;
+		double z;
+	};
+
+	Reliability::ReplicationAllocator<Temp>* pDefaultAllocator;
 	HANDLE hDefaultProcessHeap;
 	std::mutex mut;
 	std::vector<std::chrono::microseconds> mAllocationTimings;
@@ -69,38 +81,47 @@ private:
 	}
 
 public:
+	
 	void DoRun()
 	{
 		SIZE_T bytesToAllocate = 64 * 1024;
-		HANDLE heapHandle = hDefaultProcessHeap;
+		
+		Reliability::ReplicationAllocator<Temp>* pAllocator = pDefaultAllocator;
 		if (mArgs.UsePrivateHeap)
-			heapHandle = HeapCreate(c_defaultDwFlags, c_initialHeapSize, c_maxHeapSize);
+		{
+			std::shared_ptr<Reliability::IAllocationPolicy> pH = std::make_shared<Reliability::PrivateHeapAllocationPolicy>();
+			pAllocator = new Reliability::ReplicationAllocator<Temp>(pH);
+		}
+
 		for (int j = 0; j < mArgs.BatchIteration; j++)
 		{
+			const std::thread::id threadId = std::this_thread::get_id();
 			
-			std::vector<PHANDLE> handles;
+			std::vector<Temp*, Reliability::ReplicationAllocator<Temp>> handles(*pAllocator);
 			handles.reserve(mArgs.BatchSize);
 			for (int i = 0; i < mArgs.BatchSize; i++)
 			{
 				auto startTime = std::chrono::high_resolution_clock::now();
-				PHANDLE heap = (PHANDLE)HeapAlloc(heapHandle, 0, bytesToAllocate);
+				void* heap = (void*)pAllocator->allocate(bytesToAllocate);
+				Temp* temp = new(heap) Temp();
 				auto endTime = std::chrono::high_resolution_clock::now();
 				auto executionTimeInMs = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime);
 				addAllocationTime(executionTimeInMs);
-				if (heap == NULL) {
+				if (temp == NULL) {
 					_tprintf(TEXT("HeapAlloc failed to allocate %d bytes.\n"),
 						bytesToAllocate);
 				}
-				handles.push_back(heap);
+				handles.push_back(temp);
 			}
 			std::this_thread::sleep_for(std::chrono::milliseconds(20));
 			for (int i = 0; i < mArgs.BatchSize; i++)
 			{
 				auto startTime = std::chrono::high_resolution_clock::now();
-				PHANDLE heap = handles[i];
-				if (HeapFree(heapHandle, 0, heap) == FALSE) {
+				Temp* heap = handles[i];
+				/*if (HeapFree(heapHandle, 0, heap) == FALSE) {
 					_tprintf(TEXT("Failed to free allocation from default process heap.\n"));
-				}
+				}*/
+				pAllocator->deallocate(heap);
 				auto endTime = std::chrono::high_resolution_clock::now();
 				auto executionTimeInMs = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime);
 				addFreeTime(executionTimeInMs);
@@ -148,7 +169,11 @@ public:
 		mFreeTimings.reserve(totalAllocations);
 
 		if (!mArgs.UsePrivateHeap)
-			hDefaultProcessHeap = HeapCreate(c_defaultDwFlags, c_initialHeapSize, c_maxHeapSize);
+		{
+			std::shared_ptr<Reliability::IAllocationPolicy> pH = std::make_shared<Reliability::PrivateHeapAllocationPolicy>();
+			pDefaultAllocator = new Reliability::ReplicationAllocator<Temp>(pH);
+		}
+	//		hDefaultProcessHeap = HeapCreate(c_defaultDwFlags, c_initialHeapSize, c_maxHeapSize);
 	}
 };
 
